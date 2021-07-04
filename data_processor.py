@@ -1,3 +1,4 @@
+import math
 from os.path import join, exists
 from pathlib import Path
 from typing import List, Tuple
@@ -23,21 +24,21 @@ def save_data(data, name):
     torch.save(data, join(DIR, name), pickle_module=dill)
 
 
-def load_splits(BATCH_SIZE, TRAIN_FRAC):
-    data = load_dataset(BATCH_SIZE)
-    length = len(data)
-    train_size = int(length * TRAIN_FRAC)
-    sets = torch.utils.data.random_split(data, [train_size, length - train_size])
-    train, test = sets[0], sets[1]
+# def load_splits(BATCH_SIZE, TRAIN_FRAC):
+#     data = load_dataset(BATCH_SIZE)
+#     length = len(data)
+#     train_size = int(length * TRAIN_FRAC)
+#     sets = torch.utils.data.random_split(data, [train_size, length - train_size])
+#     train, test = sets[0], sets[1]
+#
+#     return train.dataset, test.dataset
 
-    return train.dataset, test.dataset
 
-
-def load_dataset(batch_size) -> DataLoader:  # loads, pads and batches the dataset, returns a dataloader
+def load_full_dataset():
     if not exists(join(DIR, LABELS)):  # not previously saved. load through dataloader, then tokenise and save
         print("processing dataset")
         from dataloader import comment_text, label_text
-        from medbert import tokeniser
+        from Models.medbert import tokeniser
 
         tokens, label_data = get_all_tokens_and_labels(comment_text, tokeniser, label_text)
         save_data(tokens, TOKENS)
@@ -46,10 +47,26 @@ def load_dataset(batch_size) -> DataLoader:  # loads, pads and batches the datas
         print("loading processed datapoints")
         tokens = torch.load(join(DIR, TOKENS), pickle_module=dill)
         label_data = torch.load(join(DIR, LABELS), pickle_module=dill)
+    combined = [(t.to(device), label_data[i].to(device)) for i, t in enumerate(tokens)]
+    return combined
 
-    combined = [(t, label_data[i]) for i, t in enumerate(tokens)]
 
-    return DataLoader(combined, shuffle=True, batch_size=batch_size, collate_fn=PadCollate(0))  #
+def load_dataset_frac(batch_size, start_frac=0, end_frac=1, dataset=None) -> DataLoader:  # loads, pads and batches the dataset, returns a dataloader
+    if dataset is None:
+        dataset = load_full_dataset()
+    length = len(dataset) - 1
+    start_id = math.ceil(start_frac * length)
+    end_id = math.ceil(end_frac * length)
+    dataset = dataset[start_id: end_id]
+    print("making data loader with ids [", start_id, ":", end_id, "]")
+    return DataLoader(dataset, shuffle=True, batch_size=batch_size, collate_fn=PadCollate(0))
+
+
+def load_splits(BATCH_SIZE, TRAIN_FRAC):
+    dataset = load_full_dataset()
+    train = load_dataset_frac(BATCH_SIZE, 0, TRAIN_FRAC, dataset=dataset)
+    test = load_dataset_frac(BATCH_SIZE, TRAIN_FRAC, 1, dataset=dataset)
+    return train, test
 
 
 def pad_tensor(vec, pad, dim):  # Felix_Kreuk https://discuss.pytorch.org/t/dataloader-for-various-length-of-data/6418/7
@@ -115,17 +132,14 @@ class PadCollate:  # Felix_Kreuk https://discuss.pytorch.org/t/dataloader-for-va
             xs - a tensor of all examples in 'batch' after padding
             ys - a LongTensor of all labels in batch
         """
-        # print("batch:", batch)
         # find longest sequence
         max_len = max(map(lambda x: x[0].shape[self.dim], batch))
         # pad according to max_len
-        # print("max len:", max_len)
         batch = map(lambda x: (pad_tensor(x[0], pad=max_len, dim=self.dim), x[1]), batch)
         batch = list(batch)
         # stack all
         xs = torch.stack(list(map(lambda x: x[0], batch)), dim=0).long()
         ys = torch.stack(list(map(lambda x: x[1], batch)), dim=0).float()
-        # print("xs:", xs.size(), "ys:", ys.size())
 
         return xs, ys
 
@@ -135,6 +149,6 @@ class PadCollate:  # Felix_Kreuk https://discuss.pytorch.org/t/dataloader-for-va
 
 if __name__ == "__main__":
     from dataloader import comment_text, label_text
-    from medbert import tokeniser
+    from Models.medbert import tokeniser
 
     tokenise_all_texts(comment_text, tokeniser)

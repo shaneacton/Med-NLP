@@ -8,11 +8,12 @@ from main import device
 from medbert import model, tokeniser
 
 FINE_TUNE_LAYERS = ["pooler", "embeddings", "LayerNorm"]
+# FINE_TUNE_LAYERS = ["pooler", "LayerNorm"]
 
 
 class BertBinaryClassifier(nn.Module):
 
-    def __init__(self, medbert: nn.Module, tokeniser, bert_hidden_size, num_classes, num_cls_layers=2):
+    def __init__(self, medbert: nn.Module, tokeniser, bert_hidden_size, num_classes, num_cls_layers=2, dropout=0.2):
         super().__init__()
         self.tokeniser = tokeniser
         self.num_classes = num_classes
@@ -49,6 +50,7 @@ class BertBinaryClassifier(nn.Module):
                 layers.append(nn.ReLU())
             else:
                 layers.append(nn.Sigmoid())
+            layers.append(nn.Dropout(dropout))
 
         assert out_size == num_classes
 

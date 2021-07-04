@@ -1,44 +1,40 @@
 import math
 import time
 
-import numpy
 import torch
-from numpy import mean
 from tqdm import tqdm
 
-import bert_classifier
+from Models import bert_classifier
 from analysis import analyse_performance
-from bert_classifier import BertBinaryClassifier
-from data_processor import load_dataset, load_splits
+from Models.bert_classifier import BertBinaryClassifier
+from config import BATCH_SIZE, LR, DROPOUT, CLASSIFIER_EPOCHS, STAGED_LAYERS, STAGE_EPOCHS, MAX_BATCHES, TRAIN_FRAC, \
+    NUM_EPOCHS, WEIGHT_DECAY
+from data_processor import load_splits
 from main import device
-from medbert import tokeniser, model
-from visualiser import plot_stats, coplot
-
-BATCH_SIZE = 8
-LR = 0.0001
-CLASSIFIER_EPOCHS = 20  # 40 time before staged unfreezing. Just the classifier and any base bert layers
-STAGED_LAYERS = ["layer.11", "layer.10", "layer.0"]
-STAGE_EPOCHS = 10
-FINISHING_EPOCHS = 0  # time after all layers have been unfrozen
-MAX_BATCHES = 999  # for debug. makes epochs run faster
-TRAIN_FRAC = 0.9
-
-NUM_EPOCHS = CLASSIFIER_EPOCHS + len(STAGED_LAYERS) * STAGE_EPOCHS + FINISHING_EPOCHS
+from Models.medbert import tokeniser, model
+from visualiser import coplot
 
 # data = load_dataset(BATCH_SIZE)
 train, test = load_splits(BATCH_SIZE, TRAIN_FRAC)
 
-cls = BertBinaryClassifier(model, tokeniser, 768, 30).to(device)
-optim = torch.optim.Adam([c for c in cls.parameters() if c.requires_grad], lr=LR, weight_decay=1e-6)
+cls = BertBinaryClassifier(model, tokeniser, 768, 30, dropout=DROPOUT).to(device)
+optim = torch.optim.Adam([c for c in cls.parameters() if c.requires_grad], lr=LR, weight_decay=WEIGHT_DECAY)
 
 
 last_activated_stage = -1
 train_performances = []
 test_performances = []
 
+run_string = "lr: " + repr(LR) + " epochs: " + repr(NUM_EPOCHS) + " drop: " + repr(DROPOUT) + " decay: " + repr(WEIGHT_DECAY)
+run_string += "\ninit unfrozen: " + repr(bert_classifier.FINE_TUNE_LAYERS) + \
+              "\nstaged unfrozen: " + repr(STAGED_LAYERS)
+
 
 def train_batches(data_split, train=True):
     performance = None
+    global cls
+    global optim
+    cls.train(mode=train)
 
     for b, batch in tqdm(enumerate(data_split)):
         if b >= MAX_BATCHES:
@@ -49,7 +45,6 @@ def train_batches(data_split, train=True):
         if train:
             optim.zero_grad()
             logits, predicted, loss = cls(tokens, label)
-            loss *= 5  # todo remove
 
             loss.backward()
             optim.step()
@@ -59,7 +54,6 @@ def train_batches(data_split, train=True):
         else:  #eval
             with torch.no_grad():
                 logits, predicted, loss = cls(tokens, label)
-                loss *= 5
 
         perf = analyse_performance(predicted, label, loss=loss.item())
         if performance is None:
@@ -72,12 +66,12 @@ def train_batches(data_split, train=True):
 
 for e in range(NUM_EPOCHS):
     e_start_time = time.time()
-    next_stage = math.floor((e-CLASSIFIER_EPOCHS)/STAGE_EPOCHS)
-    if 0 <= next_stage <= len(STAGED_LAYERS) and next_stage != last_activated_stage:  # activating a new stage
+    next_stage = math.floor((e - CLASSIFIER_EPOCHS) / STAGE_EPOCHS)
+    if 0 <= next_stage < len(STAGED_LAYERS) and next_stage != last_activated_stage:  # activating a new stage
         last_activated_stage = next_stage
         print("activating", STAGED_LAYERS[next_stage])
         cls.activate_layers(STAGED_LAYERS[next_stage])
-        optim = torch.optim.Adam([c for c in cls.parameters() if c.requires_grad], lr=LR, weight_decay=1e-6)
+        optim = torch.optim.Adam([c for c in cls.parameters() if c.requires_grad], lr=LR*0.5)
 
     # performance = train_batches(data)
     train_performance = train_batches(train)
@@ -89,11 +83,10 @@ for e in range(NUM_EPOCHS):
     train_performances.append(train_performance)
     test_performances.append(test_performance)
 
-run_string = "lr: " + repr(LR) + " num epochs: " + repr(NUM_EPOCHS)
-run_string += "\ninitial unfrozen: " + repr(bert_classifier.FINE_TUNE_LAYERS) + \
-              "\nstaged unfrozen: " + repr(STAGED_LAYERS)
+    coplot(train_performances, test_performances, run_string=run_string, display=False)
+
 
 # graph performances over epochs
-plot_stats(train_performances, train=True, run_string=run_string)
-plot_stats(test_performances, train=False, run_string=run_string)
-coplot(train_performances, test_performances, run_string=run_string)
+# plot_stats(train_performances, train=True, run_string=run_string)
+# plot_stats(test_performances, train=False, run_string=run_string)
+coplot(train_performances, test_performances, run_string=run_string, display=True)
