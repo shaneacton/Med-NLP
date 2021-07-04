@@ -1,4 +1,5 @@
 import math
+import os
 from os.path import join, exists
 from pathlib import Path
 from typing import List, Tuple
@@ -10,10 +11,13 @@ from tokenizers.normalizers import Lowercase, NFD, StripAccents
 from torch import Tensor
 from torch.utils.data import DataLoader
 
-from main import device
+from Eval.device_settings import device
 
 normaliser = normalizers.Sequence([NFD(), Lowercase(), StripAccents()])
-DIR = "Processed"
+
+dirname, _ = os.path.split(os.path.abspath(__file__))
+print("data processor dirname")
+DIR = join(dirname, "Data", "Processed")
 TOKENS = "tokenIDS.data"
 LABELS = "labels.data"
 
@@ -24,27 +28,17 @@ def save_data(data, name):
     torch.save(data, join(DIR, name), pickle_module=dill)
 
 
-# def load_splits(BATCH_SIZE, TRAIN_FRAC):
-#     data = load_dataset(BATCH_SIZE)
-#     length = len(data)
-#     train_size = int(length * TRAIN_FRAC)
-#     sets = torch.utils.data.random_split(data, [train_size, length - train_size])
-#     train, test = sets[0], sets[1]
-#
-#     return train.dataset, test.dataset
-
-
 def load_full_dataset():
     if not exists(join(DIR, LABELS)):  # not previously saved. load through dataloader, then tokenise and save
-        print("processing dataset")
-        from dataloader import comment_text, label_text
+        print("processing dataset at", DIR)
         from Models.medbert import tokeniser
+        from Datasets.dataloader import comment_text, label_text
 
         tokens, label_data = get_all_tokens_and_labels(comment_text, tokeniser, label_text)
         save_data(tokens, TOKENS)
         save_data(label_data, LABELS)
     else:  # previously saved. just load tokens
-        print("loading processed datapoints")
+        print("loading processed datapoints from", DIR)
         tokens = torch.load(join(DIR, TOKENS), pickle_module=dill)
         label_data = torch.load(join(DIR, LABELS), pickle_module=dill)
     combined = [(t.to(device), label_data[i].to(device)) for i, t in enumerate(tokens)]

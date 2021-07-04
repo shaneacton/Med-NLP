@@ -1,6 +1,6 @@
-from transformers import AutoTokenizer, AutoModel, LongformerModel
+from transformers import AutoTokenizer, AutoModel
 
-from main import device
+from Eval.device_settings import device
 
 print("loading medbert")
 tokeniser = AutoTokenizer.from_pretrained("emilyalsentzer/Bio_ClinicalBERT")

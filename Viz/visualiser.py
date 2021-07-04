@@ -1,12 +1,15 @@
+import os
+from os.path import join
 from typing import List
 import matplotlib.pyplot as plt
 
 import numpy
 
-from config import CLASSIFIER_EPOCHS, STAGE_EPOCHS, NUM_EPOCHS
+from Eval.config import CLASSIFIER_EPOCHS, STAGE_EPOCHS, NUM_EPOCHS
 
 id_to_str = {0: "precision", 1: "recall", 2: "accuracy", 3: "tru pos", 4: "tru neg", 5: "fls pos", 6: "fls neg", 7: "loss"}
 str_to_id = {v: k for k, v in id_to_str.items()}
+DIR, _ = os.path.split(os.path.abspath(__file__))
 
 
 def plot_stats(performances: List[numpy.array], metrics=["precision", "loss"], train=True, run_string=""):
@@ -48,8 +51,9 @@ def coplot(train_performances, test_performances, metrics=["precision", "loss"],
         if display:
             plt.show()
         else:
-            name = met + run_string.replace(" ", "_") + ".png"
-            plt.savefig(name)
+            name = met + "_" + run_string.replace(" ", "_") + ".png"
+            path = join(DIR, name)
+            plt.savefig(path)
             plt.clf()
 
 

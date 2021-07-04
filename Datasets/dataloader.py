@@ -1,9 +1,11 @@
 from __future__ import print_function, division
 
 import os
+from os.path import join, exists
 from typing import List, Tuple
 
-data_dir = '/home/shane/PycharmProjects/MedNLP/drive-download-20210621T204018Z-001'
+dirname, _ = os.path.split(os.path.abspath(__file__))
+unprocessed_data_dir = join(dirname, "Data", "drive-download-20210621T204018Z-001")
 subdirs = ['Groenies', 'Heath', 'Juan', 'Nick', 'Pieter', 'Santa']
 
 col_headings = ['MRN',
@@ -55,6 +57,11 @@ def get_labels(superdir, subdirs, verbose=False) -> Tuple[List[str], List[List[s
     label_files = []
     labels = []
     all_text: List[List[str]] = []
+    print("Data exists:", exists("/Data"))
+    print("cwd:", os.getcwd() )
+    path = join(unprocessed_data_dir, "Groenies")
+    print("path:", path, "full path:", join(os.getcwd(), path))
+    print("path:", join(os.getcwd(), unprocessed_data_dir, "Groenies"), "exists:", exists(join(os.getcwd(), unprocessed_data_dir, "Groenies")))
 
     for subdir in subdirs:
         files = set(os.listdir(os.path.join(superdir, subdir)))
@@ -91,7 +98,7 @@ def get_labels(superdir, subdirs, verbose=False) -> Tuple[List[str], List[List[s
     return labels, all_text
 
 
-label_text, comment_text = get_labels(data_dir, subdirs)
+label_text, comment_text = get_labels(unprocessed_data_dir, subdirs)
  # = pd.DataFrame(, columns=col_headings)
 
 # for i in range(len(labels)):

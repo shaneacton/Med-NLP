@@ -3,9 +3,9 @@ from typing import List
 import torch
 from torch import nn
 
-from data_processor import tokenise_text, get_label_bools
-from main import device
-from medbert import model, tokeniser
+from Models.medbert import tokeniser, model
+from Datasets.data_processor import tokenise_text, get_label_bools
+from Eval.device_settings import device
 
 FINE_TUNE_LAYERS = ["pooler", "embeddings", "LayerNorm"]
 # FINE_TUNE_LAYERS = ["pooler", "LayerNorm"]
@@ -92,7 +92,7 @@ class BertBinaryClassifier(nn.Module):
 if __name__ == "__main__":
     cls = BertBinaryClassifier(model, tokeniser, 768, 30).to(device)
     print(cls)
-    from dataloader import label_text, comment_text
+    from Datasets.dataloader import label_text, comment_text
 
     for i in range(len(label_text)):
         # print("label:", label_text[i], "text:", comment_text[i])

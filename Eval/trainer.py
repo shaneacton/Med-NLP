@@ -9,10 +9,10 @@ from analysis import analyse_performance
 from Models.bert_classifier import BertBinaryClassifier
 from config import BATCH_SIZE, LR, DROPOUT, CLASSIFIER_EPOCHS, STAGED_LAYERS, STAGE_EPOCHS, MAX_BATCHES, TRAIN_FRAC, \
     NUM_EPOCHS, WEIGHT_DECAY
-from data_processor import load_splits
-from main import device
+from Datasets.data_processor import load_splits
+from device_settings import device
 from Models.medbert import tokeniser, model
-from visualiser import coplot
+from Viz.visualiser import coplot
 
 # data = load_dataset(BATCH_SIZE)
 train, test = load_splits(BATCH_SIZE, TRAIN_FRAC)
