@@ -25,7 +25,7 @@ last_activated_stage = -1
 train_performances = []
 test_performances = []
 
-run_string = "lr: " + repr(LR) + " epochs: " + repr(NUM_EPOCHS) + " drop: " + repr(DROPOUT) + " decay: " + repr(WEIGHT_DECAY)
+run_string = "sampler_lr: " + repr(LR) + " epochs: " + repr(NUM_EPOCHS) + " drop: " + repr(DROPOUT) + " decay: " + repr(WEIGHT_DECAY)
 run_string += "\ninit unfrozen: " + repr(bert_classifier.FINE_TUNE_LAYERS) + \
               "\nstaged unfrozen: " + repr(STAGED_LAYERS)
 

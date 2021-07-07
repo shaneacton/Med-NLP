@@ -9,8 +9,9 @@ import torch
 from tokenizers import Tokenizer, normalizers
 from tokenizers.normalizers import Lowercase, NFD, StripAccents
 from torch import Tensor
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, WeightedRandomSampler
 
+from Eval.analysis import get_inverse_label_frequencies
 from Eval.device_settings import device
 
 normaliser = normalizers.Sequence([NFD(), Lowercase(), StripAccents()])
@@ -28,7 +29,7 @@ def save_data(data, name):
     torch.save(data, join(DIR, name), pickle_module=dill)
 
 
-def load_full_dataset():
+def get_tokens_and_labels():
     if not exists(join(DIR, LABELS)):  # not previously saved. load through dataloader, then tokenise and save
         print("processing dataset at", DIR)
         from Models.medbert import tokeniser
@@ -41,25 +42,37 @@ def load_full_dataset():
         print("loading processed datapoints from", DIR)
         tokens = torch.load(join(DIR, TOKENS), pickle_module=dill)
         label_data = torch.load(join(DIR, LABELS), pickle_module=dill)
+    return tokens, label_data
+
+
+def load_full_dataset():
+    tokens, label_data = get_tokens_and_labels()
     combined = [(t.to(device), label_data[i].to(device)) for i, t in enumerate(tokens)]
     return combined
 
 
-def load_dataset_frac(batch_size, start_frac=0, end_frac=1, dataset=None) -> DataLoader:  # loads, pads and batches the dataset, returns a dataloader
+def load_dataset_frac(batch_size, start_frac=0, end_frac=1, dataset=None, sample=True) -> DataLoader:  # loads, pads and batches the dataset, returns a dataloader
     if dataset is None:
         dataset = load_full_dataset()
+
     length = len(dataset) - 1
     start_id = math.ceil(start_frac * length)
     end_id = math.ceil(end_frac * length)
     dataset = dataset[start_id: end_id]
     print("making data loader with ids [", start_id, ":", end_id, "]")
+
+    if sample:
+        _, label_data = get_tokens_and_labels()
+        label_frequenies = torch.from_numpy(get_inverse_label_frequencies(label_data)[start_id: end_id])
+        sampler = WeightedRandomSampler(label_frequenies, len(dataset) * 2)
+        return DataLoader(dataset, batch_size=batch_size, collate_fn=PadCollate(0), sampler=sampler)
     return DataLoader(dataset, shuffle=True, batch_size=batch_size, collate_fn=PadCollate(0))
 
 
 def load_splits(BATCH_SIZE, TRAIN_FRAC):
     dataset = load_full_dataset()
     train = load_dataset_frac(BATCH_SIZE, 0, TRAIN_FRAC, dataset=dataset)
-    test = load_dataset_frac(BATCH_SIZE, TRAIN_FRAC, 1, dataset=dataset)
+    test = load_dataset_frac(BATCH_SIZE, TRAIN_FRAC, 1, dataset=dataset, sample=False)
     return train, test
 
 
