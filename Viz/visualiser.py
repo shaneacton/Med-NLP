@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 
 import numpy
 
+from Datasets.dataloader import col_headings
 from Eval.config import CLASSIFIER_EPOCHS, STAGE_EPOCHS, NUM_EPOCHS
 
 id_to_str = {0: "precision", 1: "recall", 2: "accuracy", 3: "tru pos", 4: "tru neg", 5: "fls pos", 6: "fls neg", 7: "loss"}
@@ -55,6 +56,46 @@ def coplot(train_performances, test_performances, metrics=["precision", "loss"],
             path = join(DIR, name)
             plt.savefig(path)
             plt.clf()
+
+
+def plot_class_stats(stats, run_string="", display=True):
+    epochs = [i for i in range(len(stats))]
+    stats = numpy.stack(stats, axis=0)  # ~ (E, CLASSES, 2)
+    stats = stats.swapaxes(0, 1)  # ~ (C, E, 2)
+    plt.figure(figsize=(20, 12))
+
+    for cls in range(stats.shape[0]):
+        y = stats[cls, :, 0]
+        last_val = "{:.1f}".format(y[-1])
+        label = col_headings[cls] + " (" + last_val + ")"
+        plt.plot(epochs, y, label=label)
+
+    plt.xlabel('Epoch')
+    plt.ylabel("precision")
+    plt.title(run_string)
+    add_layer_lines(epochs)
+
+    handles, labels = plt.gca().get_legend_handles_labels()
+    # sort both labels and handles by labels
+    def extract_metric(label):
+        num = label.split("(")[1].split(")")[0]
+        return float(num)
+
+    # sort labels by metric value
+    labhandles = sorted(zip(labels, handles), key=lambda t: extract_metric(t[0]), reverse=True)
+    labels, handles = zip(*labhandles)
+    plt.legend(labels=labels, handles=handles, fontsize='small', bbox_to_anchor=(1, 1), loc='upper left')
+
+    if display:
+        plt.show()
+    else:
+        name = "cls_prec" + "_" + run_string.replace(" ", "_") + ".png"
+        path = join(DIR, name)
+        plt.savefig(path)
+        plt.clf()
+
+
+
 
 
 

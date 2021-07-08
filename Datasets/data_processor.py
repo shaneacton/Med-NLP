@@ -12,6 +12,7 @@ from torch import Tensor
 from torch.utils.data import DataLoader, WeightedRandomSampler
 
 from Eval.analysis import get_inverse_label_frequencies
+from Eval.config import RESAMPLE_TRAIN_DATA, TRAIN_FRAC, BATCH_SIZE
 from Eval.device_settings import device
 
 normaliser = normalizers.Sequence([NFD(), Lowercase(), StripAccents()])
@@ -51,7 +52,7 @@ def load_full_dataset():
     return combined
 
 
-def load_dataset_frac(batch_size, start_frac=0, end_frac=1, dataset=None, sample=True) -> DataLoader:  # loads, pads and batches the dataset, returns a dataloader
+def load_dataset_frac(batch_size, start_frac=0, end_frac=1, dataset=None, sample=False) -> DataLoader:  # loads, pads and batches the dataset, returns a dataloader
     if dataset is None:
         dataset = load_full_dataset()
 
@@ -64,14 +65,14 @@ def load_dataset_frac(batch_size, start_frac=0, end_frac=1, dataset=None, sample
     if sample:
         _, label_data = get_tokens_and_labels()
         label_frequenies = torch.from_numpy(get_inverse_label_frequencies(label_data)[start_id: end_id])
-        sampler = WeightedRandomSampler(label_frequenies, len(dataset) * 2)
+        sampler = WeightedRandomSampler(label_frequenies, len(dataset))
         return DataLoader(dataset, batch_size=batch_size, collate_fn=PadCollate(0), sampler=sampler)
     return DataLoader(dataset, shuffle=True, batch_size=batch_size, collate_fn=PadCollate(0))
 
 
-def load_splits(BATCH_SIZE, TRAIN_FRAC):
+def load_splits():
     dataset = load_full_dataset()
-    train = load_dataset_frac(BATCH_SIZE, 0, TRAIN_FRAC, dataset=dataset)
+    train = load_dataset_frac(BATCH_SIZE, 0, TRAIN_FRAC, dataset=dataset, sample=RESAMPLE_TRAIN_DATA)
     test = load_dataset_frac(BATCH_SIZE, TRAIN_FRAC, 1, dataset=dataset, sample=False)
     return train, test
 
