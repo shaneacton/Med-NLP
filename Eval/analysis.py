@@ -2,6 +2,8 @@ import numpy as np
 import torch
 from torch import Tensor
 
+from Eval.config import RESAMPLE_METHOD
+
 
 def classwise_confusion_matrix(predicted: Tensor, label: Tensor):
     """
@@ -96,7 +98,7 @@ def analyse_performance(predicted: Tensor, label: Tensor, loss:float=None):
 def get_inverse_label_frequencies(label_data):
     scores = np.array(get_label_frequency_scores(label_data))
     inverse = 1/scores
-    inverse **= 0.25
+    inverse **= 0.125
     return inverse
 
 
@@ -108,10 +110,17 @@ def get_label_frequency_scores(label_data):
         label = label.cpu().detach().numpy()
         mask = label == 1
         class_frequencies = normalised_class_counts[mask]
-        total_frequency = np.sum(class_frequencies)
-        scores.append(total_frequency)
-        if total_frequency == 0:
+        if class_frequencies.shape[0] == 0:  # no examples of this class
             num_negative_examples += 1
+            scores.append(0)
+            continue
+
+        if RESAMPLE_METHOD == "min":
+            total_frequency = np.min(class_frequencies)
+        else:
+            total_frequency = np.sum(class_frequencies)
+
+        scores.append(total_frequency)
 
     sum_label_freq = sum(scores)
     for i in range(len(scores)):  # makes the total amount of weight for positive and negative examples the same
@@ -122,7 +131,6 @@ def get_label_frequency_scores(label_data):
 
 def get_normalised_class_counts(label_data ):
     labels = torch.stack(label_data, dim=0).cpu().detach().numpy()
-    print(labels)
     class_counts = np.sum(labels, axis=0)  # per class total  examples in dataset
     total_conditions = np.sum(class_counts)
     _normalised_class_counts = class_counts/total_conditions

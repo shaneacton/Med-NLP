@@ -155,8 +155,31 @@ class PadCollate:  # Felix_Kreuk https://discuss.pytorch.org/t/dataloader-for-va
         return self.pad_collate(batch)
 
 
-if __name__ == "__main__":
-    from dataloader import comment_text, label_text
-    from Models.medbert import tokeniser
+def get_label_distribution():
+    """counts representation of each spinal condition"""
+    tokens, label_data = get_tokens_and_labels()
+    sum_labels = sum(label_data).cpu().detach().numpy()
+    return sum_labels
 
-    tokenise_all_texts(comment_text, tokeniser)
+
+def get_split_label_distribution(start_frac=0, end_frac=1):
+    """counts representation of each spinal condition, for a particular section of the dataset"""
+    tokens, label_data = get_tokens_and_labels()
+    length = len(label_data) - 1
+    start_id = math.ceil(start_frac * length)
+    end_id = math.ceil(end_frac * length)
+    label_data = label_data[start_id: end_id]
+    sum_labels = sum(label_data).cpu().detach().numpy()
+    return sum_labels
+
+
+label_distribution = get_label_distribution()
+train_label_distribution = get_split_label_distribution(0, TRAIN_FRAC)
+test_label_distribution = get_split_label_distribution(TRAIN_FRAC, 1)
+print("total label distribution:", label_distribution)
+print("train_label_distribution:", train_label_distribution)
+print("test_label_distribution:", test_label_distribution)
+
+if __name__ == "__main__":
+    get_label_distribution()
+    get_split_label_distribution(0, 0.5)

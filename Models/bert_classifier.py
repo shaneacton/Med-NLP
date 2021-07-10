@@ -7,6 +7,8 @@ from Models.medbert import tokeniser, model
 from Datasets.data_processor import tokenise_text, get_label_bools
 from Eval.device_settings import device
 
+# FINE_TUNE_LAYERS = ["pooler"]
+# FINE_TUNE_LAYERS = ["pooler", "embeddings"]
 FINE_TUNE_LAYERS = ["pooler", "embeddings", "LayerNorm"]
 # FINE_TUNE_LAYERS = ["pooler", "LayerNorm"]
 

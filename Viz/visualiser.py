@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 
 import numpy
 
+from Datasets.data_processor import train_label_distribution, test_label_distribution
 from Datasets.dataloader import col_headings
 from Eval.config import CLASSIFIER_EPOCHS, STAGE_EPOCHS, NUM_EPOCHS
 
@@ -58,16 +59,36 @@ def coplot(train_performances, test_performances, metrics=["precision", "loss"],
             plt.clf()
 
 
-def plot_class_stats(stats, run_string="", display=True):
+def rolling_average(values, alpha):
+    avs = []
+    average = values[0]
+    for i, val in enumerate(values):
+        average = average * alpha + (1-alpha) * val
+        avs.append(average)
+    return avs
+
+
+def plot_class_stats(stats, run_string="", display=True, alpha=0.9, train=True):
+    if train:
+        run_string = "train_" + run_string
+        label_dist = train_label_distribution
+    else:
+        run_string = "test_" + run_string
+        label_dist = test_label_distribution
+
     epochs = [i for i in range(len(stats))]
     stats = numpy.stack(stats, axis=0)  # ~ (E, CLASSES, 2)
     stats = stats.swapaxes(0, 1)  # ~ (C, E, 2)
-    plt.figure(figsize=(20, 12))
+    plt.figure(figsize=(23, 12))
 
     for cls in range(stats.shape[0]):
         y = stats[cls, :, 0]
+        y = rolling_average(y, alpha)
         last_val = "{:.1f}".format(y[-1])
-        label = col_headings[cls] + " (" + last_val + ")"
+        distribution = label_dist[cls]
+        if distribution == 0:  # don't plot classes with no representation
+            continue
+        label = col_headings[cls] + " (" + last_val + ") D:" + repr(distribution)
         plt.plot(epochs, y, label=label)
 
     plt.xlabel('Epoch')
@@ -78,8 +99,11 @@ def plot_class_stats(stats, run_string="", display=True):
     handles, labels = plt.gca().get_legend_handles_labels()
     # sort both labels and handles by labels
     def extract_metric(label):
-        num = label.split("(")[1].split(")")[0]
-        return float(num)
+        val = float(label.split("(")[1].split(")")[0])
+        if val == 0:
+            distro = float(label.split(") D:")[1]) / 10000
+            return distro
+        return val
 
     # sort labels by metric value
     labhandles = sorted(zip(labels, handles), key=lambda t: extract_metric(t[0]), reverse=True)
