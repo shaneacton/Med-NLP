@@ -5,13 +5,12 @@ import torch
 from tqdm import tqdm
 
 from Datasets.data_processor import load_splits
-from Models import bert_classifier
 from Models.bert_classifier import BertBinaryClassifier
 from Models.medbert import tokeniser, model
-from Viz.visualiser import coplot, plot_class_stats
+from Viz.visualiser import coplot, plot_class_stats, coplot_class_stats
 from analysis import analyse_performance, classwise_confusion_matrix, confusion_to_precision
 from config import LR, DROPOUT, CLASSIFIER_EPOCHS, STAGED_LAYERS, STAGE_EPOCHS, MAX_BATCHES, NUM_EPOCHS, WEIGHT_DECAY, \
-    RESAMPLE_TRAIN_DATA, RESAMPLE_METHOD
+    RESAMPLE_TRAIN_DATA, RESAMPLE_METHOD, INITIAL_LAYERS
 from device_settings import device
 
 train, test = load_splits()
@@ -30,7 +29,7 @@ run_string = ""
 if RESAMPLE_TRAIN_DATA:
     run_string = RESAMPLE_METHOD + "_sampler_"
 run_string += "lr: " + repr(LR) + " epochs: " + repr(NUM_EPOCHS) + " drop: " + repr(DROPOUT) + " decay: " + repr(WEIGHT_DECAY)
-run_string += "\ninit unfrozen: " + repr(bert_classifier.FINE_TUNE_LAYERS) + \
+run_string += "\ninit unfrozen: " + repr(INITIAL_LAYERS) + \
               "\nstaged unfrozen: " + repr(STAGED_LAYERS)
 
 
@@ -103,11 +102,11 @@ for e in range(NUM_EPOCHS):
     coplot(train_performances, test_performances, run_string=run_string, display=False)
     plot_class_stats(test_class_stats, run_string=run_string, display=False, train=False)
     plot_class_stats(train_class_stats, run_string=run_string, display=False, train=True)
+    coplot_class_stats(train_class_stats, test_class_stats, run_string=run_string, display=False)
 
 
 # graph performances over epochs
 # plot_stats(train_performances, train=True, run_string=run_string)
 # plot_stats(test_performances, train=False, run_string=run_string)
 coplot(train_performances, test_performances, run_string=run_string, display=True)
-
 

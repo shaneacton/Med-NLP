@@ -3,14 +3,10 @@ from typing import List
 import torch
 from torch import nn
 
+from Eval.config import INITIAL_LAYERS
 from Models.medbert import tokeniser, model
 from Datasets.data_processor import tokenise_text, get_label_bools
 from Eval.device_settings import device
-
-# FINE_TUNE_LAYERS = ["pooler"]
-# FINE_TUNE_LAYERS = ["pooler", "embeddings"]
-FINE_TUNE_LAYERS = ["pooler", "embeddings", "LayerNorm"]
-# FINE_TUNE_LAYERS = ["pooler", "LayerNorm"]
 
 
 class BertBinaryClassifier(nn.Module):
@@ -28,7 +24,7 @@ class BertBinaryClassifier(nn.Module):
         for n, m in medbert.named_modules():
             picked = False  # for the double continue
 
-            for fine_tune in FINE_TUNE_LAYERS:
+            for fine_tune in INITIAL_LAYERS:
                 if fine_tune not in n:
                     continue
 

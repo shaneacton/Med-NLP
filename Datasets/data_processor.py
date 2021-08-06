@@ -173,10 +173,10 @@ def get_split_label_distribution(start_frac=0, end_frac=1):
     return sum_labels
 
 
-label_distribution = get_label_distribution()
+total_label_distribution = get_label_distribution()
 train_label_distribution = get_split_label_distribution(0, TRAIN_FRAC)
 test_label_distribution = get_split_label_distribution(TRAIN_FRAC, 1)
-print("total label distribution:", label_distribution)
+print("total label distribution:", total_label_distribution)
 print("train_label_distribution:", train_label_distribution)
 print("test_label_distribution:", test_label_distribution)
 
